@@ -14,3 +14,5 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+=======
+.~lock.*d255e79f1c72407ac115dd71d9224431e61b9f18

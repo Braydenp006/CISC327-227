@@ -1,0 +1,25 @@
+Requirements from the Owner:
+
+The system shall track what rentals a customer currently has rented out
+
+The system shall be able to track what gear is currently checked out
+
+The system shall track what time checked out gear is due back on
+
+The system shall be able to be run and maintained without a dedicated IT / technical assistant. The clerk should be able to understand the system with a short training session at most
+
+The system shall alert me or an employee of when an item is approaching being overdue. Allowing us to choose / define how soon "approaching" is to the actual deadline and allowing us to choose whether to contact the customer depending on if they are a regular or not. Limiting the annoyance for trusted customer.
+
+The system shall track who previously had a rental checked out and the damage state of the item when they return it. The system should also be able to add condition reports on initial purchase of the item and when the item gets repaired. Allowing us to alert said customer if they returned damaged equipment, and collecting payment for said damages.
+
+The system shall be easily upgraded in the future in case needs / requirements change as the company grows / changes. Adding online booking would be something that should be added in the future.
+
+The system shall keep track of the most popular items, and keep track of which items are requested to be rented when we do not have the item currently available. 
+
+The system shall produce reports for its tracked metrics (currently checked out gear, overdue items, most popular items, requested items)
+
+The system shall be cheap to run with no ongoing licensing fees, and be able to run on a local machine
+
+The system shall keep track of the name and contact info of customers, and record how often they are checking out items, the system should allow us to add a mark next to customers names if we recognize them as a regular / trusted customer
+
+Open issue: The owner is leaning towards the idea of collecting deposits on high value items (valued over a certain dollar amount) to reduce losses on stolen / lost items, there is a disagreement on this opinion with the staff and customers and no final decision has been made yet
