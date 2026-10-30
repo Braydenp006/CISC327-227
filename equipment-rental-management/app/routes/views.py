@@ -42,7 +42,9 @@ def delete_equipment_page(equipment_id):
 def renters_page():
     if request.method == "POST":
         renter_id = store.next_id("renter")
-        renter = Renter(id=renter_id, name=request.form["name"], email=request.form["email"])
+        renter = Renter(
+            id=renter_id, name=request.form["name"], email=request.form["email"]
+        )
         store.renters[renter_id] = renter
         return redirect(url_for("views.renters_page"))
     return render_template("renters.html", renters=store.renters.values())
