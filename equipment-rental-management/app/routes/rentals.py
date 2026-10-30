@@ -101,3 +101,5 @@ def release_deposit(rental_id):
 
     # BUG: rental.deposit_released is never set to True here — state is not persisted.
     return jsonify({"rental_id": rental_id, "deposit_released": True})
+#end of line
+
