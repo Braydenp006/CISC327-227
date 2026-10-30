@@ -1,9 +1,26 @@
-# TEST 1 - Add equipment
-def test_add_equipment_persists(client):
+def make_item(client, name, category, units):
     response = client.post(
         "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
+        json={"name": name, "category": category, "total_units": units},
     )
+    return response
+
+
+def make_renter(client, name, email):
+    renter = client.post(
+        "/renters",
+        json={
+            "name": name,
+            "email": email,
+        },
+    )
+    return renter
+
+
+# TEST 1 - Add equipment
+def test_add_equipment_persists(client):
+    # create item
+    response = make_item(client, "Life Jacket", "Water", 3)
     assert response.status_code == 201
     item = response.get_json()
 
@@ -14,16 +31,11 @@ def test_add_equipment_persists(client):
 
 # Test 2 - listing equipment
 def test_list_all_equipment(client):
-    # create items
-    item1 = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    # create item
+    item1 = make_item(client, "Life Jacket", "Water", 3)
     assert item1.status_code == 201
-    item2 = client.post(
-        "/equipment",
-        json={"name": "Tent", "category": "Camping", "total_units": 1},
-    )
+
+    item2 = make_item(client, "Tent", "Camping", 1)
     assert item2.status_code == 201
 
     # get the list
@@ -37,10 +49,7 @@ def test_list_all_equipment(client):
 # Test 3 - viewing individual item
 def test_view_one_item(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    item = make_item(client, "Life Jacket", "Water", 3)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
 
@@ -57,10 +66,7 @@ def test_view_one_item(client):
 # Test 4 - update equipment
 def test_update_equipment(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    item = make_item(client, "Life Jacket", "Water", 3)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
 
@@ -78,10 +84,7 @@ def test_update_equipment(client):
 # Test 5 - delete equipment
 def test_delete_equipment(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    item = make_item(client, "Life Jacket", "Water", 3)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
 
@@ -97,10 +100,7 @@ def test_delete_equipment(client):
 # Test 6 - set out of service
 def test_set_out_of_service(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    item = make_item(client, "Life Jacket", "Water", 3)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
 
@@ -117,20 +117,11 @@ def test_set_out_of_service(client):
 # test 7 - Check equipment availability
 def test_check_equipment_availability(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 1},
-    )
+    item = make_item(client, "Life Jacket", "Water", 1)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
     # create renter
-    renter = client.post(
-        "/renters",
-        json={
-            "name": "Ryan",
-            "email": "ryan@whatevermail.com",
-        },
-    )
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
     assert renter.status_code == 201
     renter_id = renter.get_json()["id"]
 
@@ -157,21 +148,12 @@ def test_check_equipment_availability(client):
 # Test 8 - Check out equipment
 def test_check_out_equipment(client):
     # create items
-    item = client.post(
-        "/equipment",
-        json={"name": "Life Jacket", "category": "Water", "total_units": 3},
-    )
+    item = make_item(client, "Life Jacket", "Water", 3)
     assert item.status_code == 201
     item_id = item.get_json()["id"]
 
-    # create renter``
-    renter = client.post(
-        "/renters",
-        json={
-            "name": "Ryan",
-            "email": "ryan@whatevermail.com",
-        },
-    )
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
     assert renter.status_code == 201
     renter_id = renter.get_json()["id"]
 
@@ -188,3 +170,65 @@ def test_check_out_equipment(client):
     # test if checkout changed item's values
     item = client.get(f"/equipment/{item_id}")
     assert item.get_json()["available_units"] == 2
+
+
+# test for edge cases:
+
+
+def test_checkout_non_existent_equipment(client):
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
+    assert renter.status_code == 201
+    renter_id = renter.get_json()["id"]
+
+    # test for edge case item does not exist
+    checkout = client.post(
+        "/rentals", json={"equipment_id": 9999, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 404
+    assert client.get("/rentals").get_json() == []
+
+
+def test_checkout_fails_for_out_of_service_item(client):
+    # create items
+    item = make_item(client, "Life Jacket", "Water", 1)
+    assert item.status_code == 201
+    item_id = item.get_json()["id"]
+
+    # set item to be out of service
+    item = client.patch(f"/equipment/{item_id}/status", json={"is_available": False})
+    assert item.status_code == 200
+
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
+    assert renter.status_code == 201
+    renter_id = renter.get_json()["id"]
+
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+
+    assert checkout.status_code == 400
+
+
+def test_checkout_fails_if_item_already_rented(client):
+    # create items
+    item = make_item(client, "Life Jacket", "Water", 1)
+    assert item.status_code == 201
+    item_id = item.get_json()["id"]
+
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
+    assert renter.status_code == 201
+    renter_id = renter.get_json()["id"]
+
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 201
+
+    # check if checking out again will cause issues
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 400
