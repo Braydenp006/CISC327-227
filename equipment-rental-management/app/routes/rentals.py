@@ -14,7 +14,7 @@ def list_rentals():
     renter_id = request.args.get("renter_id", type=int)
     equipment_id = request.args.get("equipment_id", type=int)
     if renter_id is not None:
-        results = [r for r in results if r.equipment_id == renter_id]
+        results = [r for r in results if r.renter_id == renter_id]
     if equipment_id is not None:
         results = [r for r in results if r.equipment_id == equipment_id]
     return jsonify([r.to_dict() for r in results])
@@ -22,7 +22,13 @@ def list_rentals():
 
 @rentals_bp.route("", methods=["POST"])
 def checkout_equipment():
+    """Process a new rental checkout, validating both renter and equipment."""
     data = request.get_json()
+    
+    renter = store.renters.get(data.get("renter_id"))
+    if renter is None:
+        return jsonify({"error": "Renter not found"}), 404
+
     item = store.equipment.get(data["equipment_id"])
     if item is None:
         return jsonify({"error": "Equipment not found"}), 404
