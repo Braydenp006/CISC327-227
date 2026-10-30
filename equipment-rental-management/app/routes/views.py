@@ -42,7 +42,9 @@ def delete_equipment_page(equipment_id):
 def renters_page():
     if request.method == "POST":
         renter_id = store.next_id("renter")
-        renter = Renter(id=renter_id, name=request.form["name"], email=request.form["email"])
+        renter = Renter(
+            id=renter_id, name=request.form["name"], email=request.form["email"]
+        )
         store.renters[renter_id] = renter
         return redirect(url_for("views.renters_page"))
     return render_template("renters.html", renters=store.renters.values())
@@ -60,7 +62,7 @@ def rentals_page():
         equipment_id = int(request.form["equipment_id"])
         renter_id = int(request.form["renter_id"])
         item = store.equipment.get(equipment_id)
-        if item is not None:
+        if item is not None and item.is_available and item.available_units > 0:
             item.available_units -= 1
             rental_id = store.next_id("rental")
             rental = Rental(
