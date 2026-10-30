@@ -1,3 +1,4 @@
+# CISC327 Assignment 2 Test Suite - Ali Senel 
 import pytest
 
 def make_renter(client, name, email):
