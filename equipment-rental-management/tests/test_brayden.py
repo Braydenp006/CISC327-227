@@ -232,3 +232,61 @@ def test_checkout_fails_if_item_already_rented(client):
         "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
     )
     assert checkout.status_code == 400
+
+
+# tests for step 3
+
+
+def test_failed_checkout_leaves_units_unchanged(client):
+    # create item
+    item = make_item(client, "Life Jacket", "Water", 1)
+    assert item.status_code == 201
+    item_id = item.get_json()["id"]
+
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
+    assert renter.status_code == 201
+    renter_id = renter.get_json()["id"]
+
+    # set item to be out of service
+    item = client.patch(f"/equipment/{item_id}/status", json={"is_available": False})
+    assert item.status_code == 200
+
+    # checkout unavailable item
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 400
+
+    item = client.get(f"/equipment/{item_id}")
+    assert item.get_json()["available_units"] == 1
+
+
+def test_checkout_works_for_returned_item(client):
+    # create item
+    item = make_item(client, "Life Jacket", "Water", 1)
+    assert item.status_code == 201
+    item_id = item.get_json()["id"]
+
+    # create renter
+    renter = make_renter(client, "ryan", "ryan@whatevermail.com")
+    assert renter.status_code == 201
+    renter_id = renter.get_json()["id"]
+
+    # checkout available item
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 201
+    rental_id = checkout.get_json()["id"]
+
+    # return checked out item
+    checkin = client.put(f"/rentals/{rental_id}/return")
+    assert checkin.status_code == 200
+
+    # checkout available item
+    checkout = client.post(
+        "/rentals", json={"equipment_id": item_id, "renter_id": renter_id}
+    )
+    assert checkout.status_code == 201
+    rental_id = checkout.get_json()["id"]
