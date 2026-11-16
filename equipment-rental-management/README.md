@@ -52,7 +52,8 @@ app working without a REST client, and calls the same in-memory store.
 | GET | `/renters/<id>` | Get one renter |
 | PUT | `/renters/<id>` | Update a renter |
 | DELETE | `/renters/<id>` | Delete a renter |
-| POST | `/rentals` | Check out equipment (`equipment_id`, `renter_id`) | Returns 400 if the item is out of service or has no available units |
+| POST | `/rentals` | Check out equipment (`equipment_id`, `renter_id`) | Returns 400 if the item is out of service or has no available units, sends checkout confirmation notification to renter once checkout
+completes|
 | PUT | `/rentals/<id>/return` | Return rented equipment |
 | GET | `/rentals?renter_id=&equipment_id=` | Look up rentals |
 

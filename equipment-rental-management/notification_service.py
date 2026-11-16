@@ -25,9 +25,9 @@ confirmation subject and message
 _notifications = []
 
 
-def checkout_notification(renter, equipment, due_date):
-    subject = f"Checkout Confirmed: {equipment}"
-    message = f"Hello {renter}, your rental for {equipment} has been confirmed, due on {due_date.isoformat()}"
+def checkout_notification(renter_name, equipment_name, due_date):
+    subject = f"Checkout Confirmed: {equipment_name}"
+    message = f"Hello {renter_name}, your rental for {equipment_name} has been confirmed, due on {due_date.isoformat()}"
 
     return subject, message
 
