@@ -5,6 +5,8 @@ from flask import Blueprint, jsonify, request
 from app import store
 from app.models.rental import Rental
 
+from notification_service import checkout_notification, send_notification
+
 rentals_bp = Blueprint("rentals", __name__, url_prefix="/rentals")
 
 
@@ -24,7 +26,7 @@ def list_rentals():
 def checkout_equipment():
     """Process a new rental checkout, validating both renter and equipment."""
     data = request.get_json()
-    
+
     renter = store.renters.get(data.get("renter_id"))
     if renter is None:
         return jsonify({"error": "Renter not found"}), 404
@@ -49,7 +51,12 @@ def checkout_equipment():
         deposit_amount=data.get("deposit_amount", 0.0),
     )
     store.rentals[rental_id] = rental
-    return jsonify(rental.to_dict()), 201
+
+    # send notifcation for checkout confirmation
+    subject, message = checkout_notification(renter.name, item.name, rental.due_date)
+    sent = send_notification(renter.email, subject, message)
+
+    return jsonify({**rental.to_dict(), "notification_sent": sent}), 201
 
 
 @rentals_bp.route("/<int:rental_id>/return", methods=["PUT"])
@@ -101,5 +108,6 @@ def release_deposit(rental_id):
 
     # BUG: rental.deposit_released is never set to True here — state is not persisted.
     return jsonify({"rental_id": rental_id, "deposit_released": True})
-#end of line
 
+
+# end of line
