@@ -3,13 +3,15 @@
 # and rentals_page / return_rental_page in app/routes/views.py.
 from datetime import date, timedelta
 
+from unittest.mock import patch
+
 import pytest
 
 from app import store
 
 
 def make_renter(client, name="Alice Smith", email="alice@example.com"):
-    return client.post("/renters", json={"name": name, "email": email}).get_json()
+    return client.post("/renters", json={"name": name, "email": "alice@example.com"}).get_json()
 
 
 def make_item(client, name="Drill", total_units=2):
@@ -259,3 +261,116 @@ def test_return_rental_page_survives_deleted_equipment(client):
     res = client.post(f"/ui/rentals/{rental['id']}/return")
     assert res.status_code == 302
     assert store.rentals[rental["id"]].return_date == date.today()
+
+
+# ======================================================================
+# Notification tests (Member B): failure and non-trigger paths for the
+# checkout confirmation. Added after Member A's feature is merged.
+# ======================================================================
+SEND = "app.routes.rentals.send_notification"
+
+
+def make_notif_renter(client):
+    return client.post("/renters", json={"name": "Alice", "email": "alice@example.com"}).get_json()
+
+
+def make_notif_item(client, total_units=2):
+    return client.post(
+        "/equipment",
+        json={"name": "Drill", "category": "Tools", "total_units": total_units},
+    ).get_json()
+
+
+def notif_checkout(client, equipment_id, renter_id):
+    return client.post(
+        "/rentals", json={"equipment_id": equipment_id, "renter_id": renter_id}
+    )
+
+
+# ---------- Stub: the notification fails ----------
+
+def test_checkout_still_succeeds_when_notification_fails(client, monkeypatch):
+    monkeypatch.setattr(SEND, lambda recipient, subject, message: False)
+    renter = make_notif_renter(client)
+    item = make_notif_item(client, total_units=2)
+    res = notif_checkout(client, item["id"], renter["id"])
+    assert res.status_code == 201
+    rental = store.rentals[res.get_json()["id"]]
+    assert rental.renter_id == renter["id"]
+    assert rental.return_date is None
+    assert store.equipment[item["id"]].available_units == 1
+
+
+def test_failed_notification_does_not_stop_a_later_checkout(client, monkeypatch):
+    monkeypatch.setattr(SEND, lambda recipient, subject, message: False)
+    renter = make_notif_renter(client)
+    item = make_notif_item(client, total_units=2)
+    assert notif_checkout(client, item["id"], renter["id"]).status_code == 201
+    assert notif_checkout(client, item["id"], renter["id"]).status_code == 201
+    assert len(store.rentals) == 2
+    assert store.equipment[item["id"]].available_units == 0
+
+
+# ---------- Mock: no notification when the checkout is rejected ----------
+
+def test_no_notification_when_renter_not_found(client):
+    item = make_notif_item(client)
+    with patch(SEND, return_value=True) as mock_send:
+        res = notif_checkout(client, item["id"], 999)
+    assert res.status_code == 404
+    assert store.rentals == {}
+    mock_send.assert_not_called()
+
+
+def test_no_notification_when_equipment_not_found(client):
+    renter = make_notif_renter(client)
+    with patch(SEND, return_value=True) as mock_send:
+        res = notif_checkout(client, 999, renter["id"])
+    assert res.status_code == 404
+    assert store.rentals == {}
+    mock_send.assert_not_called()
+
+
+def test_no_notification_when_no_units_available(client):
+    renter = make_notif_renter(client)
+    item = make_notif_item(client, total_units=1)
+    notif_checkout(client, item["id"], renter["id"])
+    with patch(SEND, return_value=True) as mock_send:
+        res = notif_checkout(client, item["id"], renter["id"])
+    assert res.status_code == 400
+    assert len(store.rentals) == 1
+    mock_send.assert_not_called()
+
+
+def test_no_notification_when_equipment_out_of_service(client):
+    renter = make_notif_renter(client)
+    item = make_notif_item(client, total_units=2)
+    store.equipment[item["id"]].is_available = False
+    with patch(SEND, return_value=True) as mock_send:
+        res = notif_checkout(client, item["id"], renter["id"])
+    assert res.status_code == 400
+    assert store.rentals == {}
+    mock_send.assert_not_called()
+
+
+# ---------- Mock: other rental actions do not send a checkout notification ----------
+
+def test_returning_equipment_sends_no_checkout_notification(client):
+    renter = make_notif_renter(client)
+    item = make_notif_item(client)
+    rental_id = notif_checkout(client, item["id"], renter["id"]).get_json()["id"]
+    with patch(SEND, return_value=True) as mock_send:
+        res = client.put(f"/rentals/{rental_id}/return")
+    assert res.status_code == 200
+    assert store.rentals[rental_id].return_date is not None
+    mock_send.assert_not_called()
+
+
+def test_extending_rental_sends_no_checkout_notification(client):
+    renter = make_notif_renter(client)
+    item = make_notif_item(client)
+    rental_id = notif_checkout(client, item["id"], renter["id"]).get_json()["id"]
+    with patch(SEND, return_value=True) as mock_send:
+        res = client.put(f"/rentals/{rental_id}/extend", json={"days": 2})
+    assert res.status_code == 200
+    mock_send.assert_not_called()
