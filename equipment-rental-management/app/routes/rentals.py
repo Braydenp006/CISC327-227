@@ -56,7 +56,7 @@ def checkout_equipment():
     subject, message = checkout_notification(renter.name, item.name, rental.due_date)
     sent = send_notification(renter.email, subject, message)
 
-    return jsonify({**rental.to_dict(), "notifciation sent": sent}), 201
+    return jsonify({**rental.to_dict(), "notification_sent": sent}), 201
 
 
 @rentals_bp.route("/<int:rental_id>/return", methods=["PUT"])
